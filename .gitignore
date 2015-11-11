@@ -1,0 +1,9 @@
+# Configuration files
+config.json
+
+# Cache Files
+.DS_Store
+
+# modules
+node_modules
+
