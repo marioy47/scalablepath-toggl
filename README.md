@@ -9,10 +9,14 @@ The basic usage is
 ## Example
 
 1. Get the time from an interval
-	node index.js --token 12098efnojsdf00 --workspace 123456 --person 151 --from 2015-10-02 --to 2015-11-08
+```
+node index.js --token 12098efnojsdf00 --workspace 123456 --person 151 --from 2015-10-02 --to 2015-11-08
+```
 
 2. Get the workspace id
-	node index.js --get-workspace
+```
+node index.js --get-workspace
+```
 
 ## Options
 
