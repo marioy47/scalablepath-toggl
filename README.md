@@ -15,11 +15,12 @@ The basic usage is
 	node index.js --get-workspace
 
 ## Options
-*token*: The [token provided by toggle](https://www.toggl.com/app/profile)
-*workspace*: The workspace id (use --get-workspace to find it)
-*since*: Starting date
-*until*: End date
-*person*: ScalablePath's Developer ID
+
+- *token*: The [token provided by toggle](https://www.toggl.com/app/profile)
+- *workspace*: The workspace id (use --get-workspace to find it)
+- *since*: Starting date
+- *until*: End date
+- *person*: ScalablePath's Developer ID
 
 
 ## Configuration
