@@ -103,17 +103,16 @@ var req = https.request(httpOptions, function(res){
                 }
 
                 /* Star output */
-                process.stdout.write('date,person,project,hours,notes\n');
-                var line = [];
+                var line= ['date', 'person', 'project', 'hours', 'notes'];
+                process.stdout.write(line.join('\t') + '\n');
                 dataObj.data.forEach(function(item){
+                    line = [];
                     line.push(strftime('%Y-%m-%d', new Date(item.start)));
                     line.push('[' +nconf.get('person') + ']');
                     line.push(item.project);
                     line.push(item.dur/3600000);
                     line.push(item.description);
-                    line.push('\n');
-                    process.stdout.write(line.join(','));
-                    line = [];
+                    process.stdout.write(line.join('\t') + '\n');
                 });
                 break;
         }
