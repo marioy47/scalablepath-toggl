@@ -10,7 +10,7 @@ The basic usage is
 
 1. Get the time from an interval
 ```
-node index.js --token 12098efnojsdf00 --workspace 123456 --person 151 --from 2015-10-02 --to 2015-11-08
+node index.js --token 12098efnojsdf00 --workspace 123456 --person 151 --since 2015-10-02 --until 2015-11-08
 ```
 
 2. Get the workspace id
@@ -25,6 +25,7 @@ node index.js --get-workspace
 - *since*: Starting date
 - *until*: End date
 - *person*: ScalablePath's Developer ID
+- *get-workspace*: Shows a list of Toggl's workspace IDs and names for my account. Toggl requires it for  report generation
 
 
 ## Configuration
@@ -39,5 +40,7 @@ This can be provided as commandline options or as environment variables
 export SP_TOGGL_TOKEN=2e7ad31993766ed0b9310ab977b7e278
 export SP_TOGGL_WORKSPACE=763001
 export SP_TOGGL_PERSON=151
+
+node index.js --since 2015-10-02 --until 2015-11-08
 ```
 
