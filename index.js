@@ -91,9 +91,9 @@ var req = https.request(httpOptions, function(res){
 
         switch (reqType) {
             case 'workspaces':
-                process.stdout.write('This is a list of workspaces');
+                process.stdout.write('This is a list of workspaces:\n');
                 dataObj.forEach(function(item){
-                    process.stdout.write('Name: ' + item.name + ', ID: ' + item.id);
+                    process.stdout.write('Name: ' + item.name + ', ID: ' + item.id + '\n');
                 });
                 break;
             case 'details':
