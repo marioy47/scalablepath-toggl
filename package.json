@@ -1,7 +1,7 @@
 {
-  "name": "sp-toggl",
-  "version": "1.0.0",
-  "description": "Script for exporting toggle data in a format friendly to Scalable Path Tempo App ",
+  "name": "scalablepath-toggl",
+  "version": "0.1.2",
+  "description": "Script for exporting Toggl data in a format friendly to Scalable Path Tempo App ",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -14,7 +14,7 @@
     "toggl",
     "node"
   ],
-  "author": "Mario Andrés Yepes <mario.yepes@scalablepath.com>",
+  "author": "Mario Andrés Yepes <marioy47@gmail.com>",
   "license": "GPL-3.0",
   "bugs": {
     "url": "https://github.com/marioy47/scalablepath-toggl/issues"
