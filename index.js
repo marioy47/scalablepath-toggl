@@ -103,7 +103,7 @@ var req = https.request(httpOptions, function(res){
                 }
 
                 /* Star output */
-                var line= ['date', 'person', 'project', 'hours', 'notes'];
+                var line= ['date', 'person', 'project', 'hours', 'notes', 'discount', 'tags'];
                 process.stdout.write(line.join('\t') + '\n');
                 dataObj.data.forEach(function(item){
                     line = [];
@@ -112,6 +112,8 @@ var req = https.request(httpOptions, function(res){
                     line.push(item.project);
                     line.push(item.dur/3600000);
                     line.push(item.description);
+                    line.push(0);
+                    line.push(item.tags.join(','));
                     process.stdout.write(line.join('\t') + '\n');
                 });
                 break;
