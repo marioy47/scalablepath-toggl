@@ -1,128 +1,170 @@
 #! /usr/bin/env node
 
-var https     = require('https'),
-    nconf     = require('nconf'),
-    fs        = require('fs'),
-    strftime  = require('strftime');
+var https  = require('https'),
+  nconf    = require('nconf'),
+  fs       = require('fs'),
+  _        = require('lodash'),
+  strftime = require('strftime');
 
-var token     = '',
-    workspace = '',
-    path      = '',
-    reqType   = 'details';
+// Toggle request paths
+var  paths = {
+  workspace: '/api/v8/workspaces',
+  report : '/reports/api/v2/details?user_agent=api_test&workspace_id=<%= workspace %>&since=<%= since %>&until=<%= until %>'
+};
 
-/*
- * Configuration priority: arguments, then environment, then file
- */
-nconf.argv().env().file({file: 'config.json'});
-
-/*
- * Verify configuration values are present
- */
-if (typeof nconf.get('token') && typeof nconf.get('SP_TOGGL_TOKEN')) {
-    nconf.set('token', nconf.get('SP_TOGGL_TOKEN'));
-}
-if (typeof nconf.get('workspace') && typeof nconf.get('SP_TOGGL_WORKSPACE')) {
-    nconf.set('workspace', nconf.get('SP_TOGGL_WORKSPACE'));
-}
-if (typeof nconf.get('person') && typeof nconf.get('SP_TOGGL_PERSON')) {
-    nconf.set('person', nconf.get('SP_TOGGL_PERSON'));
+// https request options
+const httpOptions = {
+  auth: '',
+  hostname: 'toggl.com',
+  port: 443,
+  path: '',
+  method: 'GET'
 }
 
-if (typeof nconf.get('token') === 'undefined') {
-    process.stderr.write('You have to provide a token\n');
-    process.stderr.write('Go to https://www.toggl.com/app/profile to access your token');
-    process.exit();
-}
-if (typeof nconf.get('workspace') === 'undefined' && typeof nconf.get('get-workspace') === 'undefined') {
-    process.stderr.write('You have to provide a workspace ID \n');
-    process.stderr.write('Use --get-workspace to get the workspace ID\n');
-    process.exit();
-}
-if (typeof nconf.get('person') === 'undefined') {
-    process.stderr.write('You have to provide the developer ID given by SacalablePath\n');
-    process.stderr.write('Use --person to set it\n');
-    process.exit();
-}
 
-/*
- * Set request URI depending on the conf values
- */
-if (nconf.get('get-workspace')) {
-    path = 'https://www.toggl.com/api/v8/workspaces?user_agent=api_test';
-    reqType = 'workspaces';
-} else {
-    if (typeof nconf.get('since') == 'undefined' || typeof nconf.get('until') == 'undefined') {
-        process.stderr.write('You have to specify --since and --until options \n');
-        process.exit();
-    }
-    path = '/reports/api/v2/details?user_agent=api_test&workspace_id='+nconf.get('workspace')+
-        '&since='+ nconf.get('since')+
-        '&until='+ nconf.get('until');
-    reqtype = 'details';
-}
-
-/*
- * HTTPS request options
- */
-var httpOptions = {
-    auth: nconf.get('token') + ':api_token',
-    hostname: 'toggl.com',
-    path: path,
-    method: 'GET'
-}
-
-/*
- * Make request
- */
-var req = https.request(httpOptions, function(res){
-
-    res.on('data', function(data) {
-        if (data['error'] != undefined) {
-            console.log(data);
-            process.exit();
-        }
-        var dataObj;
-        try {
-            dataObj = JSON.parse(data);
-        } catch (e) {
-            process.stderr.write('An error ocurred while parsing the received JSON data');
-            process.exit();
-        }
-
-        switch (reqType) {
-            case 'workspaces':
-                process.stdout.write('This is a list of workspaces:\n');
-                dataObj.forEach(function(item){
-                    process.stdout.write('Name: ' + item.name + ', ID: ' + item.id + '\n');
-                });
-                break;
-            case 'details':
-                if (dataObj['error'] != undefined) {
-                    process.stderr.write(dataObj);
-                    process.exit();
-                }
-
-                /* Star output */
-                var line= ['date', 'person', 'project', 'hours', 'notes', 'discount', 'tags'];
-                process.stdout.write(line.join('\t') + '\n');
-                dataObj.data.forEach(function(item){
-                    line = [];
-                    line.push(strftime('%Y-%m-%d', new Date(item.start)));
-                    line.push('[' +nconf.get('person') + ']');
-                    line.push(item.project);
-                    line.push(item.dur/3600000);
-                    line.push(item.description);
-                    line.push(0);
-                    line.push(item.tags.join(','));
-                    process.stdout.write(line.join('\t') + '\n');
-                });
-                break;
-        }
-    });
+// Nconf configuration priority: Arguments then ENV then conf.json
+nconf.argv().env().file({
+  file: 'config.json'
 });
+
+// Initial values
+let token   = nconf.any('token', 'TOGGL_TOKEN'),
+  workspace = nconf.any('workspace', 'TOGGL_WORKSPACE'),
+  type      = nconf.any('type'),
+  action    = 'sp-report'
+
+// Exit if not engouh parameters
+if (token == null) {
+  console.log('EMPTY TOKEN. Get you token from togglein https://toggl.com');
+  showUsage();
+  process.exit();
+}
+
+// What are we going to do on toggle?
+if (nconf.any('get-workspace')) {
+  action = 'workspace';
+}
+
+if (type != null) {
+  action = type;
+}
+
+// Add mising paramters to httpsOptions
+httpOptions.auth = token + ':api_token';
+switch (action) {
+  case 'workspace':
+    httpOptions.path = paths.workspace;
+    break;
+  case 'sp-report':
+    let since = nconf.any('since'),
+      until = nconf.any('until');
+    if (since == null || until == null || workspace == null) {
+      console.log('MISSING PARAMETER');
+      console.log('You must provide workspace id, since date, until data and SP worker ID');
+      showUsage();
+      process.exit();
+    }
+    httpOptions.path = _.template(paths.report)({
+      since: since,
+      until: until,
+      workspace: workspace
+    });
+
+    break;
+}
+
+var data = '';
+const req = https.request(httpOptions, (res) => {
+  res.setEncoding('utf8');
+
+  res.on('data', (d) => {
+    data = data + d;
+  });
+
+  res.on('end', () => {
+    switch (action) {
+      case 'workspace':
+        processWorkspace(data);
+        break;
+      case 'sp-report':
+        const spId = nconf.any('sp-id', 'TOGGL_SP_ID');
+        if (spId == null) {
+          console.error('ERROR. You must privide the SP worker ID');
+          showUsage();
+          process.exit();
+        }
+        processSP(data, spId);
+        break;
+    }
+  });
+
+});
+
+req.on('error', (e) => {
+  console.error(e);
+  process.exit();
+});
+
 req.end();
 
-req.on('err', function(err) {
-    process.stderr.write(err);
+
+/**
+ * Convert received json y SP formated data
+ * @param {string} data
+ */
+function processSP(data, spId) {
+  const dataObj = convertJsonObject(data);
+  let line = ['date', 'person', 'project', 'hours', 'notes', 'discount', 'tags'];
+
+  process.stdout.write(line.join('\t') + '\n');
+
+  dataObj.data.forEach(function(item){
+    line = [];
+    line.push(strftime('%Y-%m-%d', new Date(item.start)));
+    line.push('[' + spId + ']');
+    line.push(item.project);
+    line.push(item.dur/3600000);
+    line.push(item.description);
+    line.push(0);
+    line.push(item.tags.join(','));
+    process.stdout.write(line.join('\t') + '\n');
+  });
+}
+/**
+ * Entrega una lista formateada de espacios de trabajo
+ * @param {string} data Datas recibidos del API
+ */
+function processWorkspace(data) {
+  console.log('This is a list of workspaces');
+  let dataObj = convertJsonObject(data);
+  dataObj.forEach( (item) => {
+    console.log('ID: ', item.id, ' ,Name: ', item.name);
+  });
+}
+
+/**
+ * Receives a json string and resturns it as an object
+ * @param {string} data Input paramters
+ * @returns {object}
+ */
+function convertJsonObject(data) {
+
+  let dataObj = {};
+  try {
+    dataObj = JSON.parse(data);
+  } catch (e) {
+    console.error('ERROR!', e);
+    console.error('DATA: ', data);
     process.exit();
-});
+  }
+
+  return dataObj;
+}
+
+/**
+ * Displays usage instructions
+ */
+function showUsage() {
+  console.log('Usage:');
+  console.log('sp-toggl --token=<toggl-token> --workspace=<toggl-workspace-id> --since=<YYYY-MM-DD> --unti=<YYYY-MM-DD> [--sp-id=<scalable-path-worker>]');
+}
