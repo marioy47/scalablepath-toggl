@@ -87,7 +87,7 @@ const req = https.request(httpOptions, (res) => {
         processWorkspace(data);
         break;
       case 'sp-report':
-        const spId = nconf.any('sp-id', 'TOGGL_SP_ID');
+        const spId = nconf.any('sp-person', 'TOGGL_SP_PERSON');
         if (spId == null) {
           console.error('ERROR. You must privide the SP worker ID');
           showUsage();
@@ -166,5 +166,5 @@ function convertJsonObject(data) {
  */
 function showUsage() {
   console.log('Usage:');
-  console.log('sp-toggl --token=<toggl-token> --workspace=<toggl-workspace-id> --since=<YYYY-MM-DD> --unti=<YYYY-MM-DD> [--sp-id=<scalable-path-worker>]');
+  console.log('sp-toggl --token=<toggl-token> --workspace=<toggl-workspace-id> --since=<YYYY-MM-DD> --unti=<YYYY-MM-DD> [--sp-person=<scalable-path-worker>]');
 }
