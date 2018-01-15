@@ -43,6 +43,8 @@ if (token == null) {
 // What are we going to do on toggle?
 if (nconf.any('get-workspace')) {
   action = 'workspace';
+} else if (nconf.any('freshbooks')) {
+  action = 'freshbooks';
 }
 
 if (type != null) {
@@ -56,11 +58,12 @@ switch (action) {
     httpOptions.path = paths.workspace;
     break;
   case 'sp-report':
+  case 'freshbooks':
     let since = nconf.any('since'),
       until = nconf.any('until');
     if (since == null || until == null || workspace == null) {
       console.log('MISSING PARAMETER');
-      console.log('You must provide workspace id, since date, until data and SP worker ID');
+      console.log('You must provide --workspace, --since (from date) and --until parameters');
       showUsage();
       process.exit();
     }
@@ -69,7 +72,6 @@ switch (action) {
       until: until,
       workspace: workspace
     });
-
     break;
 }
 
@@ -95,6 +97,19 @@ const req = https.request(httpOptions, (res) => {
         }
         processSP(data, spId);
         break;
+      case 'freshbooks':
+        const bearer = nconf.any('bearer', 'TOGGL_FB_BEARER');
+        const business = nconf.any('business', 'TOGGL_FB_BUSINESS');
+        const client = nconf.any('client', 'TOGGL_FB_CLIENT');
+        const project = nconf.any('project', 'TOGGL_FB_PROJECT');
+        const dry_run = nconf.any('dry-run');
+        if (bearer == null || business == null || client == null || project == null) {
+          console.error('ERROR. You must privide the freshbooks --bearer, --business (ID), --client (ID) and --project');
+          showUsage();
+          process.exit();
+        }
+        processFreshbooks(data, bearer, business, client, project, dry_run);
+        break;
     }
   });
 
@@ -106,6 +121,60 @@ req.on('error', (e) => {
 });
 
 req.end();
+
+function processFreshbooks(data, bearer, business, client, project, dry = null) {
+  const dataObj = convertJsonObject(data);
+  let tplObject = {
+    time_entry: {
+      is_logged: true,
+      duration: null,
+      note: null,
+      started_at: null,
+      client_id: client,
+      project_id: project
+    }
+  };
+  let httpsReq = {
+    hostname: 'api.freshbooks.com',
+    port: 443,
+    path: '/timetracking/business/'+business+'/time_entries',
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer '+ bearer,
+      'Api-Version': 'alpha',
+      'Content-Type': 'application/json',
+    }
+  };
+
+  dataObj.data.forEach( function(item) {
+    tplObject.time_entry.duration  = item.dur/1000;
+    tplObject.time_entry.note  = item.description;
+    tplObject.time_entry.started_at = new Date(item.start).toISOString();
+
+    if (dry != null) {
+      console.log(tplObject);
+      return;
+    }
+
+    var postRequest = https.request(httpsReq, (res) => {
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => {
+        console.log('Server sent', chunk);
+      });
+      res.on('end', () => {
+        console.log('Time entry "', item.description, '" Sent');
+      });
+    });
+
+    postRequest.write(JSON.stringify(tplObject));
+    postRequest.on('error', (e) => {
+      console.log('Error sending timentry "', item.description, '": ', e);
+    });
+
+    return;
+  });
+
+}
 
 
 /**
@@ -166,5 +235,6 @@ function convertJsonObject(data) {
  */
 function showUsage() {
   console.log('Usage:');
-  console.log('sp-toggl --token=<toggl-token> --workspace=<toggl-workspace-id> --since=<YYYY-MM-DD> --unti=<YYYY-MM-DD> [--sp-person=<scalable-path-worker>]');
+  console.log('sp-toggl --token=<toggl-token> --workspace=<toggl-workspace-id> --since=<YYYY-MM-DD> --until=<YYYY-MM-DD> --sp-person=<scalable-path-worker>');
+  console.log('sp-toggl --token=<toggl-token> --workspace=<toggl-workspace-id> --since=<YYYY-MM-DD> --until=<YYYY-MM-DD> --bearer=<freshbooks-auth-bearer> --business=<freshbooks-business>');
 }
