@@ -124,7 +124,10 @@ req.end();
 
 function processFreshbooks(data, bearer, business, client, project, dry = null) {
   const dataObj = convertJsonObject(data);
-  let tplObject = {
+  const cmd = _.template("curl -X POST  -H 'Authorization: Bearer <%= bearer %>' -H 'Api-Version: alpha' " +
+    "-H 'Content-Type: application/json'  -d '<%= timeEntry %>' " +
+    "https://api.freshbooks.com/timetracking/business/<%= business %>/time_entries");
+  let timeEntry = {
     time_entry: {
       is_logged: true,
       duration: null,
@@ -134,44 +137,18 @@ function processFreshbooks(data, bearer, business, client, project, dry = null) 
       project_id: project
     }
   };
-  let httpsReq = {
-    hostname: 'api.freshbooks.com',
-    port: 443,
-    path: '/timetracking/business/'+business+'/time_entries',
-    method: 'POST',
-    headers: {
-      'Authorization': 'Bearer '+ bearer,
-      'Api-Version': 'alpha',
-      'Content-Type': 'application/json',
-    }
-  };
 
   dataObj.data.forEach( function(item) {
-    tplObject.time_entry.duration  = item.dur/1000;
-    tplObject.time_entry.note  = item.description;
-    tplObject.time_entry.started_at = new Date(item.start).toISOString();
+    timeEntry.time_entry.duration  = item.dur/1000;
+    timeEntry.time_entry.note  = item.description;
+    timeEntry.time_entry.started_at = new Date(item.start).toISOString();
 
-    if (dry != null) {
-      console.log(tplObject);
-      return;
-    }
+    console.log(cmd({
+      bearer:bearer,
+      timeEntry: JSON.stringify(timeEntry),
+      business: business
+    }));
 
-    var postRequest = https.request(httpsReq, (res) => {
-      res.setEncoding('utf8');
-      res.on('data', (chunk) => {
-        console.log('Server sent', chunk);
-      });
-      res.on('end', () => {
-        console.log('Time entry "', item.description, '" Sent');
-      });
-    });
-
-    postRequest.write(JSON.stringify(tplObject));
-    postRequest.on('error', (e) => {
-      console.log('Error sending timentry "', item.description, '": ', e);
-    });
-
-    return;
   });
 
 }
